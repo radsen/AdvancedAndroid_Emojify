@@ -21,6 +21,8 @@ import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.Matrix;
+import android.media.ExifInterface;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
@@ -178,17 +180,52 @@ public class MainActivity extends AppCompatActivity {
         mShareFab.setVisibility(View.VISIBLE);
         mClearFab.setVisibility(View.VISIBLE);
 
+        ExifInterface exifInterface = null;
+        try {
+            exifInterface = new ExifInterface(mTempPhotoPath);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        int orientation = exifInterface.getAttributeInt(ExifInterface.TAG_ORIENTATION,
+                ExifInterface.ORIENTATION_UNDEFINED);
+
         // Resample the saved image to fit the ImageView
         mResultsBitmap = BitmapUtils.resamplePic(this, mTempPhotoPath);
-        
+
+        switch(orientation) {
+
+            case ExifInterface.ORIENTATION_ROTATE_90:
+                rotateImage(mResultsBitmap, 90);
+                break;
+
+            case ExifInterface.ORIENTATION_ROTATE_180:
+                rotateImage(mResultsBitmap, 180);
+                break;
+
+            case ExifInterface.ORIENTATION_ROTATE_270:
+                rotateImage(mResultsBitmap, 270);
+                break;
+
+            case ExifInterface.ORIENTATION_NORMAL:
+
+            default:
+                break;
+        }
+
         // Detect the faces
-        Emojifier.detectFaces(this, mResultsBitmap);
-        // TODO (10): Change the method call from detectFaces() to detectFacesAndOverlayEmoji() and assign the result to mResultsBitmap.
-        
+        mResultsBitmap = Emojifier.detectFacesAndOverlayEmoji(this, mResultsBitmap);
+
         // Set the new bitmap to the ImageView
         mImageView.setImageBitmap(mResultsBitmap);
     }
 
+    public static Bitmap rotateImage(Bitmap source, float angle) {
+        Matrix matrix = new Matrix();
+        matrix.postRotate(angle);
+        return Bitmap.createBitmap(source, 0, 0, source.getWidth(), source.getHeight(),
+                matrix, true);
+    }
 
     /**
      * OnClick method for the save button.
